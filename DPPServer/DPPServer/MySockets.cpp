@@ -11,14 +11,13 @@ namespace MySockets {
     /*------------------------------------------------------------------------------------------------------------------------------*/
     // Listner Methods
 
-    Listener::Listener(bool& succeeded) {
+    Listener::Listener() {
         // Initialize Winsock
         WSADATA wsaData; // create object to hold windows sockets implementation
         int iResult;
         iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
         if (iResult != 0) {
             std::cout << "WSAStartup failed: \n" << iResult;
-            succeeded = false;
             return;
         }
 
@@ -35,7 +34,6 @@ namespace MySockets {
         if (iResult != 0) {
             std::cout << "getaddrinfo failed:\n" << iResult;
             WSACleanup();
-            succeeded = false;
             return;
         }
 
@@ -48,7 +46,6 @@ namespace MySockets {
         if (ListenSocket == INVALID_SOCKET) {
             std::cout << "Error at socket():\n", WSAGetLastError();
             freeaddrinfo(result);
-            succeeded = false;
             return;
         }
 
@@ -60,12 +57,10 @@ namespace MySockets {
             printf("bind failed with error: %d\n", WSAGetLastError());
             freeaddrinfo(result);
             closesocket(ListenSocket);
-            succeeded = false;
             return;
         }
 
         freeaddrinfo(result); // the information from getaddrinfo is no longer need once bind is called
-        succeeded = true;
     }
 
     void Listener::startlistening() {
@@ -90,7 +85,7 @@ namespace MySockets {
             }
 
             // make socket manager add new client to client list
-            parent.addClient(ClientSocket);
+            parent->addClient(ClientSocket);
 
             
         } while (succeeded);
@@ -105,25 +100,32 @@ namespace MySockets {
 
     // used by destructor, closes all connections client and listner
     void SocketManager::closeConnections() {
-
+        // TO-DO 
+        for (auto cur : workers) {
+            cur.disconnect();
+        }
+        workers.clear();
     }
 
     // default constructor
     SocketManager::SocketManager() {
-        // TO-DO figure out why this is an error
-        listener = Listener(active);
-
-
+        // starts thread on non-static function startListening of obj listener
+        std::thread thread(Listener::startlistening, listener);
     }
 
     // destructor, calls closeConnections
     SocketManager::~SocketManager() {
-       // TO-DO 
+        closeConnections();
     }
 
     // Remove particular client, typically called by ClientHandler
     void SocketManager::removeClient(ClientHandler* client) {
+        // locking my worker mutex so no funny buisness starts happening
+        std::lock_guard<std::mutex> lock(workerMtx);
 
+        // delete ClientHandler object
+        client->disconnect();
+        workers.erase(std::find(workers.begin(), workers.end(), *client));
     }
 
     // adds a new client to workers list, typically called by listner
@@ -132,22 +134,15 @@ namespace MySockets {
         std::lock_guard<std::mutex> lock(workerMtx);
 
         // create ClientHandler object
-
-
-
-        workers.push_back(socket);
+        ClientHandler client(this, socket);
+        workers.push_back(client);
 
 
     }
 
     // This is called by clients when they need new orders
     std::pair<int, int> SocketManager::requestOrders() {
-
-    }
-
-    // this is called to populate the order queue
-    void SocketManager::getOrders() {
-
+        return parent->getNextRange();
     }
 
     /*------------------------------------------------------------------------------------------------------------------------------*/

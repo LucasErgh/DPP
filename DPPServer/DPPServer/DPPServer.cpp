@@ -79,8 +79,7 @@ SOCKET createListner() {
     if (ListenSocket == INVALID_SOCKET) {
         std::cout << "Error at socket():\n", WSAGetLastError();
         freeaddrinfo(result);
-        WSACleanup();
-        return 1;
+        throw(std::exception("Failed to bind"));
     }
 
     // Bind to a socket
@@ -90,9 +89,7 @@ SOCKET createListner() {
     if (iResult == SOCKET_ERROR) {
         printf("bind failed with error: %d\n", WSAGetLastError());
         freeaddrinfo(result);
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
+        throw(std::exception("Failed to bind"));
     }
 
     freeaddrinfo(result); // the information from getaddrinfo is no longer need once bind is called
@@ -102,8 +99,19 @@ SOCKET createListner() {
 
 SOCKET StartListening(SOCKET ListenSocket) {
     
+    if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
+        std::cout << "Listen failed with error: " << WSAGetLastError();
+        throw(std::exception("Failed to listen"));
+    }
+    else {
+        SOCKET ClientSocket = INVALID_SOCKET;
 
-
+        ClientSocket = accept(ListenSocket, NULL, NULL);
+        if (ClientSocket == INVALID_SOCKET) {
+            throw(std::exception("Failed to accept"));
+        }
+        else return ClientSocket;
+    }
 }
 
 int main() {

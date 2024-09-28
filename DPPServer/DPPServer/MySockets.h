@@ -23,12 +23,12 @@ namespace MySockets {
 
 	class ClientHandler {
 	private:
-		SocketManager parent;
+		SocketManager* parent;
 		SOCKET client;
 
 	public:
 
-		ClientHandler(SocketManager parent, SOCKET client) : parent(parent), client(client) {}
+		ClientHandler(SocketManager* parent, SOCKET client) : parent(parent), client(client) {}
 
 		// Attempts to connect to socket
 		bool connect(SOCKET cSocket);
@@ -48,14 +48,14 @@ namespace MySockets {
 		std::atomic<bool> keepListening = true;
 
 		SOCKET ListenSocket;
-		SocketManager parent;
+		SocketManager* parent;
 
 	public:
 		
 		// 
 
 		// Creates listner
-		Listener(bool& succeeded);
+		Listener();
 
 		// start listening
 		void startlistening();
@@ -74,7 +74,7 @@ namespace MySockets {
 		
 		Listener listener;
 		std::vector<ClientHandler> workers;
-		std::atomic<ServerLogic> parent;
+		ServerLogic* parent;
 
 		// used by destructor, closes all connections client and listner
 		void closeConnections();
@@ -93,8 +93,6 @@ namespace MySockets {
 
 		// This is called by clients when they need new orders
 		std::pair<int, int> requestOrders();
-		// this is called to populate the order queue
-		void getOrders();
 	};
 
 }
